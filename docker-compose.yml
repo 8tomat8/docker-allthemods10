@@ -1,0 +1,74 @@
+services:
+  atm10:
+    build:
+      context: .
+    image: atm10-local:latest
+    container_name: atm10
+    restart: unless-stopped
+    stop_grace_period: 2m
+    environment:
+      EULA: ${EULA}
+      JVM_OPTS: ${JVM_OPTS}
+      MOTD: ${MOTD}
+      ALLOW_FLIGHT: ${ALLOW_FLIGHT}
+      MAX_PLAYERS: ${MAX_PLAYERS}
+      ONLINE_MODE: ${ONLINE_MODE}
+      ENABLE_WHITELIST: ${ENABLE_WHITELIST}
+      WHITELIST_USERS: ${WHITELIST_USERS}
+      OP_USERS: ${OP_USERS}
+      REFRESH_REMOTE_UUIDS: ${REFRESH_REMOTE_UUIDS}
+      CURSEFORGE_API_KEY: ${CURSEFORGE_API_KEY:?CURSEFORGE_API_KEY is required}
+      ENABLE_RCON: ${ENABLE_RCON}
+      RCON_PORT: ${RCON_PORT}
+      RCON_PASSWORD: ${RCON_PASSWORD:?RCON_PASSWORD is required}
+    ports:
+      - "${ATM10_PORT}:25565"
+    volumes:
+      - "${ATM10_DATA_DIR}:/data"
+    healthcheck:
+      test: ["CMD-SHELL", "bash -c '</dev/tcp/127.0.0.1/25565'"]
+      interval: 30s
+      timeout: 5s
+      retries: 10
+      start_period: 120s
+
+  backups:
+    image: itzg/mc-backup:latest
+    container_name: atm10-backups
+    restart: unless-stopped
+    depends_on:
+      atm10:
+        condition: service_healthy
+    environment:
+      RCON_HOST: atm10
+      RCON_PORT: ${RCON_PORT}
+      RCON_PASSWORD: ${RCON_PASSWORD:?RCON_PASSWORD is required}
+      BACKUP_METHOD: tar
+      BACKUP_NAME: atm10
+      INITIAL_DELAY: ${BACKUP_INITIAL_DELAY}
+      BACKUP_INTERVAL: ${BACKUP_INTERVAL}
+      PRUNE_BACKUPS_DAYS: ${PRUNE_BACKUPS_DAYS}
+      PRUNE_BACKUPS_COUNT: ${PRUNE_BACKUPS_COUNT}
+      PAUSE_IF_NO_PLAYERS: ${PAUSE_IF_NO_PLAYERS}
+      TAR_COMPRESS_METHOD: zstd
+      EXCLUDES: "*.jar,cache,logs,*.tmp,*.log,crash-reports"
+    volumes:
+      - "${ATM10_DATA_DIR}:/data:ro"
+      - "${ATM10_BACKUP_DIR}:/backups"
+
+  restarter:
+    image: itzg/minecraft-server:java21
+    container_name: atm10-restarter
+    restart: unless-stopped
+    depends_on:
+      atm10:
+        condition: service_healthy
+    entrypoint: ["/bin/bash", "/opt/restart-with-announcement.sh"]
+    environment:
+      RCON_HOST: atm10
+      RCON_PORT: ${RCON_PORT}
+      RCON_PASSWORD: ${RCON_PASSWORD:?RCON_PASSWORD is required}
+      RESTART_INTERVAL_HOURS: ${RESTART_INTERVAL_HOURS}
+      RESTART_WARNING_MINUTES: ${RESTART_WARNING_MINUTES}
+    volumes:
+      - "./scripts/restart-with-announcement.sh:/opt/restart-with-announcement.sh:ro"
