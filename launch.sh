@@ -36,8 +36,11 @@ download_server_zip_with_curseforge_api() {
         -H "x-api-key: $CURSEFORGE_API_KEY" \
         "$CURSEFORGE_API_URL/mods/$CURSEFORGE_MOD_ID/files?pageSize=50") || return 1
 
-    file_id=$(jq -r --arg v "$SERVER_VERSION" \
-        '.data[] | select(.displayName | test("-" + $v + "(\\.zip)?$")) | .id' <<<"$files_index" | head -n 1)
+    local escaped_v
+    escaped_v=$(printf '%s' "$SERVER_VERSION" | sed 's/\./\\\\./g')
+
+    file_id=$(jq -r --arg v "$escaped_v" \
+        '.data[] | select(.displayName | test("(Server[-_ ]?Files[-_]|[-_])" + $v + "(\\.zip)?$"; "i")) | .id' <<<"$files_index" | head -n 1)
 
     if [[ -z "$file_id" ]] || [[ "$file_id" == "null" ]]; then
         if file_id=$(extract_file_id_from_url "$SERVER_ZIP_URL"); then
@@ -90,6 +93,16 @@ normalize_bool() {
     esac
 }
 
+strip_wrapping_quotes() {
+    local value="$1"
+    if [[ ${#value} -ge 2 ]]; then
+        if [[ "$value" == "\""*"\"" ]] || [[ "$value" == "'"*"'" ]]; then
+            value="${value:1:${#value}-2}"
+        fi
+    fi
+    printf '%s' "$value"
+}
+
 set_server_property() {
     local key="$1"
     local value="$2"
@@ -125,6 +138,10 @@ fetch_remote_uuid() {
 }
 
 cd /data
+
+CURSEFORGE_API_KEY="$(strip_wrapping_quotes "${CURSEFORGE_API_KEY:-}")"
+RCON_PASSWORD="$(strip_wrapping_quotes "${RCON_PASSWORD:-}")"
+MOTD="$(strip_wrapping_quotes "${MOTD:-}")"
 
 if ! [[ "$EULA" = "false" ]]; then
     echo "eula=true" >eula.txt
