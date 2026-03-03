@@ -10,14 +10,44 @@ RESTART_FINAL_COUNTDOWN_SECONDS=10
 RESTART_GRACE_SECONDS=15
 RESTART_MESSAGE_PREFIX="[Server]"
 
+strip_wrapping_quotes() {
+    local value="$1"
+    if [[ ${#value} -ge 2 ]]; then
+        if [[ "$value" == "\""*"\"" ]] || [[ "$value" == "'"*"'" ]]; then
+            value="${value:1:${#value}-2}"
+        fi
+    fi
+    printf '%s' "$value"
+}
+
+RCON_HOST="$(strip_wrapping_quotes "$RCON_HOST")"
+RCON_PORT="$(strip_wrapping_quotes "$RCON_PORT")"
+RCON_PASSWORD="$(strip_wrapping_quotes "$RCON_PASSWORD")"
+RESTART_INTERVAL_HOURS="$(strip_wrapping_quotes "$RESTART_INTERVAL_HOURS")"
+RESTART_WARNING_MINUTES="$(strip_wrapping_quotes "$RESTART_WARNING_MINUTES")"
+
 if [[ -z "$RCON_PASSWORD" ]]; then
     echo "RCON_PASSWORD is required for restart announcements."
     exit 1
 fi
 
+if ! [[ "$RCON_PORT" =~ ^[0-9]+$ ]] || ((RCON_PORT < 1 || RCON_PORT > 65535)); then
+    echo "RCON_PORT must be a number between 1 and 65535."
+    exit 1
+fi
+
+if ! [[ "$RESTART_INTERVAL_HOURS" =~ ^[0-9]+$ ]] || ((RESTART_INTERVAL_HOURS < 1)); then
+    echo "RESTART_INTERVAL_HOURS must be a positive integer."
+    exit 1
+fi
+
 rcon_run() {
     local cmd="$*"
-    rcon-cli --host "$RCON_HOST" --port "$RCON_PORT" --password "$RCON_PASSWORD" "$cmd"
+    if command -v timeout >/dev/null 2>&1; then
+        timeout 10s rcon-cli --host "$RCON_HOST" --port "$RCON_PORT" --password "$RCON_PASSWORD" "$cmd"
+    else
+        rcon-cli --host "$RCON_HOST" --port "$RCON_PORT" --password "$RCON_PASSWORD" "$cmd"
+    fi
 }
 
 rcon_retry() {
@@ -84,7 +114,10 @@ announce_and_restart() {
     sleep "$RESTART_GRACE_SECONDS"
 }
 
-wait_for_rcon
+until wait_for_rcon; do
+    echo "RCON not ready yet; retrying in 15 seconds."
+    sleep 15
+done
 
 while true; do
     sleep "$((RESTART_INTERVAL_HOURS * 3600))"

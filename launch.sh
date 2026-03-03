@@ -139,9 +139,25 @@ fetch_remote_uuid() {
 
 cd /data
 
-CURSEFORGE_API_KEY="$(strip_wrapping_quotes "${CURSEFORGE_API_KEY:-}")"
-RCON_PASSWORD="$(strip_wrapping_quotes "${RCON_PASSWORD:-}")"
+EULA="$(strip_wrapping_quotes "${EULA:-false}")"
+JVM_OPTS="$(strip_wrapping_quotes "${JVM_OPTS:-}")"
 MOTD="$(strip_wrapping_quotes "${MOTD:-}")"
+ALLOW_FLIGHT="$(strip_wrapping_quotes "${ALLOW_FLIGHT:-}")"
+MAX_PLAYERS="$(strip_wrapping_quotes "${MAX_PLAYERS:-}")"
+ONLINE_MODE="$(strip_wrapping_quotes "${ONLINE_MODE:-}")"
+ENABLE_WHITELIST="$(strip_wrapping_quotes "${ENABLE_WHITELIST:-}")"
+WHITELIST_USERS="$(strip_wrapping_quotes "${WHITELIST_USERS:-}")"
+OP_USERS="$(strip_wrapping_quotes "${OP_USERS:-}")"
+REFRESH_REMOTE_UUIDS="$(strip_wrapping_quotes "${REFRESH_REMOTE_UUIDS:-false}")"
+CURSEFORGE_API_KEY="$(strip_wrapping_quotes "${CURSEFORGE_API_KEY:-}")"
+ENABLE_RCON="$(strip_wrapping_quotes "${ENABLE_RCON:-true}")"
+RCON_PORT="$(strip_wrapping_quotes "${RCON_PORT:-25575}")"
+RCON_PASSWORD="$(strip_wrapping_quotes "${RCON_PASSWORD:-}")"
+
+if ! [[ "$RCON_PORT" =~ ^[0-9]+$ ]] || ((RCON_PORT < 1 || RCON_PORT > 65535)); then
+    echo "RCON_PORT must be a number between 1 and 65535."
+    exit 13
+fi
 
 if ! [[ "$EULA" = "false" ]]; then
     echo "eula=true" >eula.txt
