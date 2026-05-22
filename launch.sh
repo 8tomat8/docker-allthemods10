@@ -26,14 +26,11 @@ download_server_zip_with_curseforge_api() {
         -H "x-api-key: $CURSEFORGE_API_KEY" \
         "$CURSEFORGE_API_URL/mods/$CURSEFORGE_MOD_ID/files?pageSize=50") || return 1
 
-    local escaped_v
-    escaped_v=$(printf '%s' "$SERVER_VERSION" | sed 's/\./\\\\./g')
-
-    file_id=$(jq -r --arg v "$escaped_v" \
-        '.data[] | select(.displayName | test("(Server[-_ ]?Files[-_]|[-_])" + $v + "(\\.zip)?$"; "i")) | .id' <<<"$files_index" | head -n 1)
+    file_id=$(jq -r --arg v "$SERVER_VERSION" \
+        '[.data[] | select(.displayName | endswith("-" + $v)) | .serverPackFileId][0] // empty' <<<"$files_index")
 
     if [[ -z "$file_id" ]] || [[ "$file_id" == "null" ]]; then
-        echo "Could not resolve CurseForge file ID for SERVER_VERSION=$SERVER_VERSION."
+        echo "Could not resolve CurseForge server pack for SERVER_VERSION=$SERVER_VERSION (no matching client release with serverPackFileId)."
         return 1
     fi
 
