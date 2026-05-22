@@ -1,10 +1,9 @@
 #!/bin/bash
 set -x
 
-NEOFORGE_VERSION=21.1.219
-SERVER_VERSION=6.0.1
+NEOFORGE_VERSION=21.1.228
+SERVER_VERSION=7.0
 SERVER_ZIP="Server-Files-$SERVER_VERSION.zip"
-SERVER_ZIP_URL="https://mediafilez.forgecdn.net/files/7679/065/ServerFiles-$SERVER_VERSION.zip"
 NEOFORGE_INSTALLER="neoforge-${NEOFORGE_VERSION}-installer.jar"
 NEOFORGE_SHA256_URL="https://maven.neoforged.net/releases/net/neoforged/neoforge/$NEOFORGE_VERSION/neoforge-$NEOFORGE_VERSION-installer.jar.sha256"
 REFRESH_REMOTE_UUIDS=${REFRESH_REMOTE_UUIDS:-false}
@@ -13,15 +12,6 @@ CURSEFORGE_MOD_ID=925200
 ENABLE_RCON=${ENABLE_RCON:-true}
 RCON_PORT=${RCON_PORT:-25575}
 RCON_PASSWORD=${RCON_PASSWORD:-}
-
-extract_file_id_from_url() {
-    local url="$1"
-    if [[ "$url" =~ /files/([0-9]+)/([0-9]+)/ ]]; then
-        echo "${BASH_REMATCH[1]}${BASH_REMATCH[2]}"
-        return 0
-    fi
-    return 1
-}
 
 download_server_zip_with_curseforge_api() {
     local file_id
@@ -43,12 +33,8 @@ download_server_zip_with_curseforge_api() {
         '.data[] | select(.displayName | test("(Server[-_ ]?Files[-_]|[-_])" + $v + "(\\.zip)?$"; "i")) | .id' <<<"$files_index" | head -n 1)
 
     if [[ -z "$file_id" ]] || [[ "$file_id" == "null" ]]; then
-        if file_id=$(extract_file_id_from_url "$SERVER_ZIP_URL"); then
-            echo "CurseForge API version match not found; trying fallback file ID $file_id from SERVER_ZIP_URL"
-        else
-            echo "Could not resolve CurseForge file ID for SERVER_VERSION=$SERVER_VERSION."
-            return 1
-        fi
+        echo "Could not resolve CurseForge file ID for SERVER_VERSION=$SERVER_VERSION."
+        return 1
     fi
 
     metadata=$(curl -fsS --retry 2 --max-time 20 \

@@ -2,7 +2,7 @@
 
 FROM eclipse-temurin:21-jdk
 
-LABEL version="6.0.1"
+LABEL version="7.0"
 
 RUN apt-get update && apt-get install -y curl unzip jq gosu && \
     rm -rf /var/lib/apt/lists/* && \
